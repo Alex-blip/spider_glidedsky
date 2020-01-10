@@ -4,13 +4,15 @@ import requests
 from lxml import etree
 
 """
-爬虫的目标很简单，就是拿到想要的数据。
+爬虫往往不能在一个页面里面获取全部想要的数据，需要访问大量的网页才能够完成任务。
 
-这里有一个网站，里面有一些数字。把这些数字的总和，输入到答案框里面，即可通过本关。
-待爬取网站:  http://glidedsky.com/level/web/crawler-basic-1
+这里有一个网站，还是求所有数字的和，只是这次分了1000页。
+网址：http://glidedsky.com/level/web/crawler-basic-2
 """
 
-start_url = 'http://glidedsky.com/level/web/crawler-basic-1'
+start_url = 'http://glidedsky.com/level/web/crawler-basic-2?page=1'
+
+start_page = 1
 
 headers = {
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
@@ -27,9 +29,18 @@ headers = {
 }
 
 
-def get_html():
-    resp = requests.get(start_url, headers=headers)
+def get_html(url):
+    resp = requests.get(url, headers=headers)
     return resp
+
+
+def get_total_page():
+    resp = get_html(start_url)
+    html = etree.HTML(resp.text)
+    li = html.xpath('//ul[@class="pagination"]/li')[-2]
+    total_page = li.xpath('./a/text()')
+    total_page = int(total_page[0]) if total_page else 0
+    return total_page
 
 
 def parse(resp):
@@ -40,11 +51,21 @@ def parse(resp):
         number_str = div.xpath('./text()')[0]
         number = int(number_str)
         sum += number
-    print(sum)
+    return sum
+
 
 def run():
-    resp = get_html()
-    parse(resp)
+    total_page = get_total_page()
+    total_sum = 0
+    for pageNo in range(start_page, total_page+1):
+
+        url = 'http://glidedsky.com/level/web/crawler-basic-2?page=%s' % str(pageNo)
+        resp = get_html(url)
+        sum = parse(resp)
+        total_sum += sum
+        print(sum)
+
+    print(total_sum)
 
 
 if __name__ == '__main__':
